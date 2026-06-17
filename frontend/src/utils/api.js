@@ -155,6 +155,19 @@ export const inviteFamilyMember = (familyId, userId, phone) => request({
 export const getFamilyInvitations = (familyId, userId) => request({
   url: `/families/${familyId}/invitations?userId=${encodeURIComponent(userId)}`
 })
+export const getReceivedFamilyInvitations = (userId) => request({
+  url: `/families/invitations/received?userId=${encodeURIComponent(userId)}`
+})
+export const acceptFamilyInvitation = (invitationId, userId) => request({
+  url: `/families/invitations/${invitationId}/accept`,
+  method: 'POST',
+  data: { userId }
+})
+export const rejectFamilyInvitation = (invitationId, userId) => request({
+  url: `/families/invitations/${invitationId}/reject`,
+  method: 'POST',
+  data: { userId }
+})
 export const requestJoinFamily = (userId, target) => request({
   url: '/families/join-requests',
   method: 'POST',
