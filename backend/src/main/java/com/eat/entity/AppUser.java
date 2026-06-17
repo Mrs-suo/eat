@@ -27,6 +27,9 @@ public class AppUser {
     @Column(length = 32)
     private String nickname;
 
+    @Column(length = 1000)
+    private String avatar;
+
     @Column(name = "family_id")
     private Long familyId;
 

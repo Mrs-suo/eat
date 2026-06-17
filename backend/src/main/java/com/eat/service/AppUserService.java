@@ -7,6 +7,7 @@ import com.eat.repository.AppUserRepository;
 import com.eat.repository.FamilyMemberRepository;
 import com.eat.repository.FamilyRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,10 +25,7 @@ public class AppUserService {
         String cleanPhone = normalizePhone(phone);
         AppUser user = appUserRepository.findByPhone(cleanPhone)
                 .orElseThrow(() -> new IllegalArgumentException("该手机号未注册，请先注册"));
-        // 注册时已加入家庭，登录时校验一致性
-        if (user.getFamilyId() == null) {
-            throw new IllegalStateException("账号数据异常：未关联家庭");
-        }
+        ensureCurrentFamily(user);
         return user;
     }
 
@@ -40,12 +38,6 @@ public class AppUserService {
         String cleanNickname = (nickname == null || nickname.trim().isEmpty())
                 ? "家人" + cleanPhone.substring(7)
                 : nickname.trim();
-        boolean joining = familyCode != null && !familyCode.trim().isEmpty();
-        boolean creating = familyName != null && !familyName.trim().isEmpty();
-        if (joining == creating) {
-            throw new IllegalArgumentException("请选择创建家庭或加入家庭");
-        }
-
         AppUser user = new AppUser();
         user.setPhone(cleanPhone);
         user.setUserId("u_" + cleanPhone);
@@ -54,11 +46,11 @@ public class AppUserService {
         user.setUpdateTime(LocalDateTime.now());
         user = appUserRepository.save(user);
 
-        Family family;
-        if (creating) {
+        Family family = null;
+        if (familyName != null && !familyName.trim().isEmpty()) {
             family = familyService.createFamily(familyName.trim(), user);
-        } else {
-            family = familyService.joinFamily(familyCode.trim(), user);
+        } else if (familyCode != null && !familyCode.trim().isEmpty()) {
+            familyService.requestJoinFamily(familyCode.trim(), user);
         }
         return new RegisterResult(user, family);
     }
@@ -69,8 +61,27 @@ public class AppUserService {
 
     public Family getCurrentFamily(String userId) {
         AppUser user = getByUserId(userId);
-        if (user == null || user.getFamilyId() == null) return null;
+        if (user == null) return null;
+        ensureCurrentFamily(user);
+        if (user.getFamilyId() == null) return null;
         return familyRepository.findById(user.getFamilyId()).orElse(null);
+    }
+
+    @Transactional
+    public AppUser updateProfile(String userId, String nickname, String avatar) {
+        AppUser user = appUserRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("用户不存在"));
+        String cleanNickname = nickname == null ? "" : nickname.trim();
+        if (cleanNickname.isEmpty()) {
+            throw new IllegalArgumentException("请输入昵称");
+        }
+        if (cleanNickname.length() > 32) {
+            throw new IllegalArgumentException("昵称最多 32 个字符");
+        }
+        user.setNickname(cleanNickname);
+        user.setAvatar(normalizeText(avatar));
+        user.setUpdateTime(LocalDateTime.now());
+        return appUserRepository.save(user);
     }
 
     public void syncUserStorage(AppUser user) {
@@ -83,6 +94,23 @@ public class AppUserService {
             throw new IllegalArgumentException("请输入正确的手机号");
         }
         return cleanPhone;
+    }
+
+    private String normalizeText(String value) {
+        if (value == null) return null;
+        String cleanValue = value.trim();
+        return cleanValue.isEmpty() ? null : cleanValue;
+    }
+
+    private void ensureCurrentFamily(AppUser user) {
+        if (user.getFamilyId() != null
+                && familyMemberRepository.findByFamilyIdAndUserId(user.getFamilyId(), user.getUserId()).isPresent()) {
+            return;
+        }
+        List<FamilyMember> memberships = familyMemberRepository.findByUserId(user.getUserId());
+        user.setFamilyId(memberships.isEmpty() ? null : memberships.get(0).getFamilyId());
+        user.setUpdateTime(LocalDateTime.now());
+        appUserRepository.save(user);
     }
 
     public record RegisterResult(AppUser user, Family family) {}

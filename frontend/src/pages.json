@@ -27,6 +27,20 @@
       }
     },
     {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationBarTitleText": "个人资料",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/family/family",
+      "style": {
+        "navigationBarTitleText": "家庭管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/publish/publish",
       "style": {
         "navigationBarTitleText": "发布菜品"

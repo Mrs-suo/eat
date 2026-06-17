@@ -8,7 +8,7 @@
       </view>
       <text class="title">{{ mode === 'login' ? '手机号登录' : '注册账号' }}</text>
       <text class="subtitle">
-        {{ mode === 'login' ? '输入已注册手机号进入账号' : '加入或创建你的家庭' }}
+        {{ mode === 'login' ? '输入已注册手机号进入账号' : '先创建账号，家庭码可稍后再绑定' }}
       </text>
     </view>
 
@@ -16,31 +16,6 @@
       <view class="mode-tabs">
         <view class="mode-tab" :class="{ active: mode === 'login' }" @click="switchMode('login')">登录</view>
         <view class="mode-tab" :class="{ active: mode === 'register' }" @click="switchMode('register')">注册</view>
-      </view>
-
-      <!-- 注册：创建/加入家庭 -->
-      <view v-if="mode === 'register'" class="family-mode">
-        <text class="family-mode-label">你打算怎么开始？</text>
-        <view class="family-mode-row">
-          <view
-            class="family-mode-card"
-            :class="{ active: familyMode === 'create' }"
-            @click="familyMode = 'create'"
-          >
-            <view class="fmc-icon fmc-create">+</view>
-            <text class="fmc-title">创建家庭</text>
-            <text class="fmc-desc">新家，把家人邀请进来</text>
-          </view>
-          <view
-            class="family-mode-card"
-            :class="{ active: familyMode === 'join' }"
-            @click="familyMode = 'join'"
-          >
-            <view class="fmc-icon fmc-join">⌂</view>
-            <text class="fmc-title">加入家庭</text>
-            <text class="fmc-desc">输入家人给的 6 位家庭码</text>
-          </view>
-        </view>
       </view>
 
       <view class="field">
@@ -66,19 +41,8 @@
         />
       </view>
 
-      <view v-if="mode === 'register' && familyMode === 'create'" class="field">
-        <text class="field-label">家庭名</text>
-        <input
-          class="phone-input"
-          v-model="familyName"
-          maxlength="20"
-          placeholder="比如：我和小红的小家"
-          placeholder-class="input-placeholder"
-        />
-      </view>
-
-      <view v-if="mode === 'register' && familyMode === 'join'" class="field">
-        <text class="field-label">家庭码</text>
+      <view v-if="mode === 'register'" class="field">
+        <text class="field-label">家庭码（选填）</text>
         <view class="family-code-row">
           <input
             class="phone-input family-code-input"
@@ -93,12 +57,15 @@
         </view>
         <view v-if="familyPreview" class="family-preview">
           <text class="fp-title">{{ familyPreview.family.name }}</text>
-          <text class="fp-desc">当前 {{ familyPreview.memberCount }} 位成员</text>
+          <text class="fp-desc" :class="{ full: isFamilyFull }">
+            当前 {{ familyPreview.memberCount }} / {{ familyPreview.maxMembers || 6 }} 位成员
+          </text>
+          <text class="fp-tip">注册后会向该家庭发送加入申请，审核通过后自动绑定</text>
         </view>
       </view>
 
       <button class="submit-btn" :loading="loading" @click="submit">
-        {{ mode === 'login' ? '登录' : '注册并加入家庭' }}
+        {{ mode === 'login' ? '登录' : '注册账号' }}
       </button>
 
       <view v-if="mode === 'login'" class="hint-row">
@@ -121,10 +88,8 @@ export default {
   data() {
     return {
       mode: 'login',
-      familyMode: 'create',
       phone: '',
       nickname: '',
-      familyName: '',
       familyCode: '',
       familyPreview: null,
       loading: false
@@ -133,6 +98,10 @@ export default {
   computed: {
     canPreview() {
       return /^[\dA-Za-z]{6}$/.test((this.familyCode || '').trim())
+    },
+    isFamilyFull() {
+      if (!this.familyPreview) return false
+      return Number(this.familyPreview.memberCount || 0) >= Number(this.familyPreview.maxMembers || 6)
     }
   },
   methods: {
@@ -174,25 +143,24 @@ export default {
             phone,
             nickname: this.nickname
           }
-          if (this.familyMode === 'create') {
-            if (!this.familyName || !this.familyName.trim()) {
-              throw new Error('请输入家庭名')
-            }
-            payload.familyName = this.familyName.trim()
-          } else {
+          const code = this.familyCode.trim()
+          if (code) {
             if (!this.canPreview) {
               throw new Error('请输入正确的 6 位家庭码')
             }
-            payload.familyCode = this.familyCode.trim()
+            if (this.familyPreview && this.isFamilyFull) {
+              throw new Error('这个家庭已满，最多 6 位成员')
+            }
+            payload.familyCode = code
           }
           const res = await registerByPhone(payload)
           user = res.user
           family = res.family
         }
         this.saveSession(user, family)
-        info(this.mode === 'login' ? '登录成功' : '注册成功')
+        info(this.mode === 'login' ? '登录成功' : (this.familyCode.trim() ? '注册成功，已提交家庭申请' : '注册成功'))
         setTimeout(() => {
-          uni.navigateBack()
+          this.goAfterAuth()
         }, 500)
       } catch (e) {
         error(e.message || (this.mode === 'login' ? '登录失败' : '注册失败'))
@@ -209,7 +177,22 @@ export default {
         uni.setStorageSync('familyId', family.id)
         uni.setStorageSync('familyCode', family.familyCode)
         uni.setStorageSync('familyName', family.name)
+      } else {
+        uni.removeStorageSync('familyId')
+        uni.removeStorageSync('familyCode')
+        uni.removeStorageSync('familyName')
       }
+    },
+    goAfterAuth() {
+      const pages = getCurrentPages()
+      if (pages.length > 1) {
+        uni.navigateBack()
+        return
+      }
+      uni.switchTab({
+        url: '/pages/my/my',
+        fail: () => uni.reLaunch({ url: '/pages/my/my' })
+      })
     },
     goBack() {
       const pages = getCurrentPages()
@@ -273,6 +256,14 @@ export default {
 .fp-title,
 .fp-desc {
   display: block;
+}
+
+.fp-tip {
+  display: block;
+  margin-top: 8rpx;
+  color: var(--color-text-tertiary);
+  font-size: 22rpx;
+  line-height: 32rpx;
 }
 
 .title {
@@ -450,6 +441,11 @@ export default {
   margin-top: 4rpx;
   color: var(--color-text-muted);
   font-size: 22rpx;
+}
+
+.fp-desc.full {
+  color: var(--color-danger);
+  font-weight: 700;
 }
 
 .input-placeholder {

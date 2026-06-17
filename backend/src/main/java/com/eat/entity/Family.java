@@ -24,5 +24,8 @@ public class Family {
     @Column(nullable = false, length = 64)
     private String name;
 
+    @Column(name = "creator_user_id", length = 64)
+    private String creatorUserId;
+
     private LocalDateTime createTime;
 }

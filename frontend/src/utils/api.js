@@ -120,11 +120,72 @@ export const registerByPhone = ({ phone, nickname, familyCode, familyName }) => 
   method: 'POST',
   data: { phone, nickname, familyCode, familyName }
 })
+export const updateUserProfile = (userId, profile) => request({
+  url: `/users/${encodeURIComponent(userId)}/profile`,
+  method: 'PUT',
+  data: profile
+})
 export const getCurrentFamily = (userId) => request({ url: `/users/${encodeURIComponent(userId)}/family` })
 
 // ============ 家庭 API ============
+export const createFamily = (userId, name) => request({
+  url: '/families',
+  method: 'POST',
+  data: { userId, name }
+})
 export const previewFamilyByCode = (code) => request({ url: `/families/code/${encodeURIComponent(code)}` })
+export const getUserFamilies = (userId) => request({ url: `/families/by-user/${encodeURIComponent(userId)}` })
 export const getFamilyMembers = (familyId) => request({ url: `/families/${familyId}/members` })
+export const switchCurrentFamily = (familyId, userId) => request({
+  url: `/families/${familyId}/switch-current`,
+  method: 'POST',
+  data: { userId }
+})
+export const updateFamily = (familyId, userId, name) => request({
+  url: `/families/${familyId}`,
+  method: 'PUT',
+  data: { userId, name }
+})
+export const inviteFamilyMember = (familyId, userId, phone) => request({
+  url: `/families/${familyId}/invitations`,
+  method: 'POST',
+  data: { userId, phone }
+})
+export const getFamilyInvitations = (familyId, userId) => request({
+  url: `/families/${familyId}/invitations?userId=${encodeURIComponent(userId)}`
+})
+export const getReceivedFamilyInvitations = (userId) => request({
+  url: `/families/invitations/received?userId=${encodeURIComponent(userId)}`
+})
+export const acceptFamilyInvitation = (invitationId, userId) => request({
+  url: `/families/invitations/${invitationId}/accept`,
+  method: 'POST',
+  data: { userId }
+})
+export const rejectFamilyInvitation = (invitationId, userId) => request({
+  url: `/families/invitations/${invitationId}/reject`,
+  method: 'POST',
+  data: { userId }
+})
+export const requestJoinFamily = (userId, target) => request({
+  url: '/families/join-requests',
+  method: 'POST',
+  data: { userId, target }
+})
+export const approveJoinRequest = (invitationId, userId) => request({
+  url: `/families/join-requests/${invitationId}/approve`,
+  method: 'POST',
+  data: { userId }
+})
+export const rejectJoinRequest = (invitationId, userId) => request({
+  url: `/families/join-requests/${invitationId}/reject`,
+  method: 'POST',
+  data: { userId }
+})
+export const removeFamilyMember = (familyId, operatorUserId, targetUserId) => request({
+  url: `/families/${familyId}/members/${encodeURIComponent(targetUserId)}?userId=${encodeURIComponent(operatorUserId)}`,
+  method: 'DELETE'
+})
 export const getTodayCook = (familyId, date) => {
   const params = date ? `?date=${date}` : ''
   return request({ url: `/families/${familyId}/today-cook${params}` })

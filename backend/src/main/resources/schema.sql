@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS families (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     family_code VARCHAR(8) NOT NULL UNIQUE,
     name VARCHAR(64) NOT NULL,
+    creator_user_id VARCHAR(64),
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -17,6 +18,7 @@ CREATE TABLE IF NOT EXISTS app_users (
     user_id VARCHAR(64) NOT NULL UNIQUE,
     phone VARCHAR(20) NOT NULL UNIQUE,
     nickname VARCHAR(32),
+    avatar VARCHAR(1000),
     family_id BIGINT,
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -32,6 +34,22 @@ CREATE TABLE IF NOT EXISTS family_members (
     UNIQUE KEY uk_family_user (family_id, user_id),
     INDEX idx_member_user (user_id),
     INDEX idx_member_family (family_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ---- 家庭邀请 ----
+CREATE TABLE IF NOT EXISTS family_invitations (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    family_id BIGINT NOT NULL,
+    inviter_user_id VARCHAR(64) NOT NULL,
+    invitee_user_id VARCHAR(64) NOT NULL,
+    invitee_phone VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    request_type VARCHAR(24) NOT NULL DEFAULT 'INVITE',
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_invitation_family (family_id),
+    INDEX idx_invitation_invitee (invitee_user_id),
+    INDEX idx_invitation_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ---- 每日主厨 ----

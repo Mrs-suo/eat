@@ -14,7 +14,8 @@
           @click="handleProfileClick"
         >
           <view class="my-avatar">
-            <MemberAvatar :text="avatarInitial" size="xl" ring />
+            <image v-if="user.avatar" class="profile-avatar-image" :src="user.avatar" mode="aspectFill" />
+            <MemberAvatar v-else :text="avatarInitial" size="xl" ring />
           </view>
           <view class="my-profile-info">
             <view class="my-name-row">
@@ -86,16 +87,19 @@
 
       <view v-else class="my-content">
       <!-- 家庭信息卡 -->
-      <view class="family-card">
+      <view class="family-card" @click="goToFamilyManage">
         <view class="family-head">
           <view class="family-icon">
             <AppIcon name="home" size="lg" tone="inherit" :bg="false" />
           </view>
           <view class="family-info">
-            <text class="family-name">{{ familyName }}</text>
-            <text class="family-sub">{{ familyCode }} · {{ members.length }} 位家人</text>
+            <text class="family-name">{{ familyName || '暂无家庭' }}</text>
+            <text class="family-sub">{{ familyCode || '未绑定家庭' }} · {{ members.length }} 位家人</text>
           </view>
-          <view class="family-share" @click="copyFamilyCode">
+          <view v-if="receivedInviteCount > 0" class="family-invite-badge">
+            <text>{{ receivedInviteCount }} 条邀请</text>
+          </view>
+          <view class="family-share" @click.stop="copyFamilyCode">
             <AppIcon name="copy" size="sm" tone="primary" style="width: 28rpx; height: 28rpx;" />
             <text>复制码</text>
           </view>
@@ -230,7 +234,8 @@ import {
   switchCook,
   getPendingRequests,
   getFamilyDishes,
-  getOrdersByFamily
+  getOrdersByFamily,
+  getReceivedFamilyInvitations
 } from '@/utils/api.js'
 import { formatYMD } from '@/utils/date.js'
 import { info, error, warn } from '@/utils/toast.js'
@@ -253,6 +258,7 @@ export default {
       members: [],
       todayCook: null,
       pendingCount: 0,
+      receivedInviteCount: 0,
       weeklyStats: { cookDays: 0, dishCount: 0, orderCount: 0 },
       todayDateStr: ''
     }
@@ -286,27 +292,49 @@ export default {
       this.familyCode = uni.getStorageSync('familyCode') || ''
       const today = new Date()
       this.todayDateStr = `${today.getMonth() + 1}月${today.getDate()}日`
-      if (!this.user || !this.family) {
-        this.loadFamily()
+      if (!this.user) {
+        this.resetFamilyState()
+        this.pageLoading = false
+        return
       }
-      if (this.user) {
-        this.loadAll()
-      }
+      this.loadAll()
     },
     async loadAll() {
       this.pageLoading = true
+      await this.loadFamily()
+      if (!this.family) {
+        this.resetFamilyState()
+        await this.loadReceivedInvites()
+        this.pageLoading = false
+        return
+      }
       await Promise.all([
-        this.loadFamily(),
         this.loadMembers(),
         this.loadTodayCook(),
-        this.loadStats()
+        this.loadStats(),
+        this.loadPending(),
+        this.loadReceivedInvites()
       ])
-      this.loadPending()
       this.pageLoading = false
+    },
+    resetFamilyState() {
+      this.family = null
+      this.familyName = ''
+      this.familyCode = ''
+      this.members = []
+      this.todayCook = null
+      this.pendingCount = 0
+      this.weeklyStats = { cookDays: 0, dishCount: 0, orderCount: 0 }
+      uni.removeStorageSync('familyId')
+      uni.removeStorageSync('familyCode')
+      uni.removeStorageSync('familyName')
     },
     async loadFamily() {
       try {
-        if (!this.currentUserId) return
+        if (!this.currentUserId) {
+          this.family = null
+          return
+        }
         this.family = await getCurrentFamily(this.currentUserId)
         if (this.family) {
           this.familyName = this.family.name
@@ -314,14 +342,22 @@ export default {
           uni.setStorageSync('familyId', this.family.id)
           uni.setStorageSync('familyName', this.family.name)
           uni.setStorageSync('familyCode', this.family.familyCode)
+        } else {
+          this.familyName = ''
+          this.familyCode = ''
         }
       } catch (e) {
         this.family = null
+        this.familyName = ''
+        this.familyCode = ''
       }
     },
     async loadMembers() {
       try {
-        if (!this.family) return
+        if (!this.family) {
+          this.members = []
+          return
+        }
         this.members = await getFamilyMembers(this.family.id)
       } catch (e) {
         this.members = []
@@ -329,7 +365,10 @@ export default {
     },
     async loadTodayCook() {
       try {
-        if (!this.family) return
+        if (!this.family) {
+          this.todayCook = null
+          return
+        }
         this.todayCook = await getTodayCook(this.family.id, this.formatDate(new Date()))
       } catch (e) {
         this.todayCook = null
@@ -337,16 +376,31 @@ export default {
     },
     async loadPending() {
       try {
-        if (!this.family) return
+        if (!this.family) {
+          this.pendingCount = 0
+          return
+        }
         const list = await getPendingRequests(this.family.id)
         this.pendingCount = list.length
       } catch (e) {
         this.pendingCount = 0
       }
     },
+    async loadReceivedInvites() {
+      try {
+        if (!this.currentUserId) return
+        const list = await getReceivedFamilyInvitations(this.currentUserId)
+        this.receivedInviteCount = list.length
+      } catch (e) {
+        this.receivedInviteCount = 0
+      }
+    },
     async loadStats() {
       try {
-        if (!this.family) return
+        if (!this.family) {
+          this.weeklyStats = { cookDays: 0, dishCount: 0, orderCount: 0 }
+          return
+        }
         const [dishes, orders] = await Promise.all([
           getFamilyDishes(this.family.id),
           getOrdersByFamily(this.family.id)
@@ -369,7 +423,11 @@ export default {
       return formatYMD(date)
     },
     handleProfileClick() {
-      if (!this.isLoggedIn) this.goToLogin()
+      if (!this.isLoggedIn) {
+        this.goToLogin()
+        return
+      }
+      uni.navigateTo({ url: '/pages/profile/profile' })
     },
     goToLogin() {
       uni.navigateTo({ url: '/pages/login/login' })
@@ -379,6 +437,9 @@ export default {
       uni.setClipboardData({ data: this.familyCode, success: () => {
         info('家庭码已复制')
       }})
+    },
+    goToFamilyManage() {
+      uni.navigateTo({ url: '/pages/family/family' })
     },
     async switchToMe() {
       if (!this.family) return
@@ -510,6 +571,15 @@ export default {
 
 .my-chevron { transition: transform 0.2s ease, color 0.2s ease; }
 .my-profile:active .my-chevron { color: var(--color-primary) !important; transform: translateX(4rpx); }
+
+.profile-avatar-image {
+  width: 168rpx;
+  height: 168rpx;
+  border-radius: 50%;
+  border: 6rpx solid var(--color-bg-card);
+  box-shadow: var(--shadow-primary-soft);
+  background: var(--color-bg-page-soft);
+}
 
 /* ============ 未登录 Hero 空状态卡 ============ */
 .guest-hero {
@@ -722,6 +792,17 @@ export default {
   display: flex; align-items: center; gap: 6rpx;
 }
 .family-share:active { transform: scale(0.96); }
+
+.family-invite-badge {
+  flex: none;
+  padding: 10rpx 16rpx;
+  border-radius: 999rpx;
+  color: var(--color-bg-card);
+  background: var(--gradient-danger);
+  font-size: 22rpx;
+  font-weight: 800;
+  box-shadow: var(--shadow-color-soft);
+}
 
 .members-row {
   margin-top: 24rpx;
