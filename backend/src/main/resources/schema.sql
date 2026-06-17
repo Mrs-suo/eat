@@ -137,6 +137,22 @@ CREATE TABLE IF NOT EXISTS order_items (
     FOREIGN KEY (dish_id) REFERENCES dishes(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- ---- 通知 ----
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    family_id BIGINT,
+    user_id VARCHAR(64) NOT NULL,
+    type VARCHAR(32) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    content VARCHAR(1000),
+    ref_id BIGINT,
+    is_read BOOLEAN DEFAULT FALSE,
+    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_notif_user (user_id),
+    INDEX idx_notif_family (family_id),
+    INDEX idx_notif_read (is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- ---- 文件资源 ----
 CREATE TABLE IF NOT EXISTS file_resources (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
