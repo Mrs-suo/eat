@@ -116,9 +116,6 @@
             <text class="family-name">{{ familyName || '暂无家庭' }}</text>
             <text class="family-sub">{{ familyCode || '未绑定家庭' }} · {{ members.length }} 位家人</text>
           </view>
-          <view v-if="receivedInviteCount > 0" class="family-invite-badge">
-            <text>{{ receivedInviteCount }} 条邀请</text>
-          </view>
           <view class="family-share" @click.stop="copyFamilyCode">
             <AppIcon name="copy" size="sm" tone="primary" style="width: 28rpx; height: 28rpx;" />
             <text>复制码</text>
@@ -256,7 +253,6 @@ import {
   getPendingRequests,
   getFamilyDishes,
   getOrdersByFamily,
-  getReceivedFamilyInvitations,
   getUserFamilies,
   getFamilyInvitations,
   getNotifications,
@@ -285,7 +281,6 @@ export default {
       pendingCount: 0,
       dishPendingCount: 0,
       joinPendingCount: 0,
-      receivedInviteCount: 0,
       weeklyStats: { cookDays: 0, dishCount: 0, orderCount: 0 },
       todayDateStr: '',
       notificationSocket: null,
@@ -341,7 +336,6 @@ export default {
       await this.loadFamily()
       if (!this.family) {
         this.resetFamilyState()
-        await this.loadReceivedInvites()
         this.pageLoading = false
         return
       }
@@ -349,8 +343,7 @@ export default {
         this.loadMembers(),
         this.loadTodayCook(),
         this.loadStats(),
-        this.loadPending(),
-        this.loadReceivedInvites()
+        this.loadPending()
       ])
       this.pageLoading = false
     },
@@ -444,15 +437,6 @@ export default {
       return groups
         .flat()
         .filter(item => item.status === 'PENDING' && item.requestType === 'JOIN_REQUEST')
-    },
-    async loadReceivedInvites() {
-      try {
-        if (!this.currentUserId) return
-        const list = await getReceivedFamilyInvitations(this.currentUserId)
-        this.receivedInviteCount = list.length
-      } catch (e) {
-        this.receivedInviteCount = 0
-      }
     },
     async loadStats() {
       try {
@@ -977,17 +961,6 @@ export default {
   display: flex; align-items: center; gap: 6rpx;
 }
 .family-share:active { transform: scale(0.96); }
-
-.family-invite-badge {
-  flex: none;
-  padding: 10rpx 16rpx;
-  border-radius: 999rpx;
-  color: var(--color-bg-card);
-  background: var(--gradient-danger);
-  font-size: 22rpx;
-  font-weight: 800;
-  box-shadow: var(--shadow-color-soft);
-}
 
 .members-row {
   margin-top: 24rpx;

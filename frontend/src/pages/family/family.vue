@@ -1,14 +1,7 @@
 <template>
-  <view class="family-page">
-    <view class="top-bar">
-      <view class="top-btn" @click="goBack">
-        <AppIcon name="chevron_right" size="md" tone="inherit" class="back-icon" />
-      </view>
-      <text class="top-title">家庭管理</text>
-      <view class="top-btn ghost"></view>
-    </view>
-
-    <view class="section family-switch">
+  <PageLayout title="家庭管理">
+    <view class="family-page">
+      <view class="section family-switch">
       <view class="section-head">
         <view>
           <text class="section-title">我的家庭</text>
@@ -129,29 +122,8 @@
         </view>
       </view>
     </view>
-
-    <view class="section">
-      <view class="section-head">
-        <view>
-          <text class="section-title">收到的邀请</text>
-          <text class="section-desc">同意后会切换到新加入的家庭</text>
-        </view>
-      </view>
-      <view v-if="receivedInvitations.length" class="invite-card-list">
-        <view v-for="item in receivedInvitations" :key="item.id" class="received-card">
-          <view>
-            <text class="received-title">{{ item.familyName }}</text>
-            <text class="received-desc">{{ item.inviterName || '家人' }} 邀请你加入 · {{ item.familyCode }}</text>
-          </view>
-          <view class="received-actions">
-            <view class="plain-btn" @click="rejectInvitation(item)">拒绝</view>
-            <view class="small-btn" @click="acceptInvitation(item)">同意</view>
-          </view>
-        </view>
-      </view>
-      <view v-else class="empty-line">暂无新的家庭邀请</view>
     </view>
-  </view>
+  </PageLayout>
 </template>
 
 <script>
@@ -167,17 +139,16 @@ import {
   inviteFamilyMember,
   requestJoinFamily,
   getFamilyInvitations,
-  getReceivedFamilyInvitations,
-  acceptFamilyInvitation,
-  rejectFamilyInvitation,
   approveJoinRequest,
   rejectJoinRequest,
   removeFamilyMember
 } from '@/utils/api.js'
 import { info, error, warn } from '@/utils/toast.js'
 
+import PageLayout from '@/components/PageLayout.vue'
+
 export default {
-  components: { AppIcon, MemberAvatar },
+  components: { AppIcon, MemberAvatar, PageLayout },
   data() {
     return {
       user: null,
@@ -186,7 +157,6 @@ export default {
       families: [],
       members: [],
       invitations: [],
-      receivedInvitations: [],
       familyName: '',
       newFamilyName: '',
       joinTarget: '',
@@ -219,7 +189,7 @@ export default {
       this.userId = user.userId
       await this.loadFamilies()
       await this.loadCurrentFamily()
-      await Promise.all([this.loadReceivedInvitations(), this.loadFamilyDetail()])
+      await this.loadFamilyDetail()
     },
     async loadFamilies() {
       this.families = await getUserFamilies(this.userId).catch(() => [])
@@ -244,9 +214,6 @@ export default {
       ])
       this.members = members
       this.invitations = invitations
-    },
-    async loadReceivedInvitations() {
-      this.receivedInvitations = await getReceivedFamilyInvitations(this.userId).catch(() => [])
     },
     async switchFamily(item) {
       if (!item || item.id === this.currentFamilyId) return
@@ -345,28 +312,6 @@ export default {
         }
       })
     },
-    async acceptInvitation(item) {
-      try {
-        const family = await acceptFamilyInvitation(item.id, this.userId)
-        this.currentFamily = family
-        this.familyName = family.name
-        this.syncFamilyStorage(family)
-        await this.loadFamilies()
-        await Promise.all([this.loadFamilyDetail(), this.loadReceivedInvitations()])
-        info('已加入家庭')
-      } catch (e) {
-        error(e.message || '同意失败')
-      }
-    },
-    async rejectInvitation(item) {
-      try {
-        await rejectFamilyInvitation(item.id, this.userId)
-        await this.loadReceivedInvitations()
-        info('已拒绝')
-      } catch (e) {
-        error(e.message || '操作失败')
-      }
-    },
     async approveJoin(item) {
       try {
         await approveJoinRequest(item.id, this.userId)
@@ -405,9 +350,6 @@ export default {
       const value = String(phone || '')
       if (value.length !== 11) return value
       return `${value.slice(0, 3)}****${value.slice(7)}`
-    },
-    goBack() {
-      uni.navigateBack()
     }
   }
 }
@@ -415,43 +357,9 @@ export default {
 
 <style>
 .family-page {
-  min-height: 100vh;
   box-sizing: border-box;
   padding: 24rpx 24rpx 56rpx;
   background: var(--gradient-page);
-}
-
-.top-bar {
-  height: 88rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.top-btn {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: var(--color-bg-overlay-strong);
-  color: var(--color-text-secondary);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: var(--shadow-card-soft);
-}
-
-.top-btn.ghost {
-  opacity: 0;
-}
-
-.back-icon {
-  transform: rotate(180deg);
-}
-
-.top-title {
-  color: var(--color-text-primary);
-  font-size: 32rpx;
-  font-weight: 800;
 }
 
 .section {
@@ -752,13 +660,6 @@ export default {
   color: var(--color-text-tertiary);
   font-size: 22rpx;
   line-height: 32rpx;
-}
-
-.received-actions {
-  margin-top: 18rpx;
-  display: flex;
-  justify-content: flex-end;
-  gap: 14rpx;
 }
 
 .received-actions.compact {
