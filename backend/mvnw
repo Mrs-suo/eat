@@ -1,0 +1,19 @@
+#!/bin/sh
+# Maven Wrapper startup script
+
+MAVEN_HOME="$HOME/.m2/wrapper/dists/apache-maven-3.9.6"
+MAVEN_BIN="$MAVEN_HOME/bin/mvn"
+
+if [ ! -f "$MAVEN_BIN" ]; then
+    echo "Downloading Maven..."
+    mkdir -p "$MAVEN_HOME"
+    cd /tmp
+    curl -L -o maven.zip "https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.6/apache-maven-3.9.6-bin.zip"
+    unzip -q -o maven.zip -d "$HOME/.m2/wrapper/dists/"
+    mv "$HOME/.m2/wrapper/dists/apache-maven-3.9.6" "$MAVEN_HOME" 2>/dev/null || true
+    rm -f maven.zip
+    cd -
+fi
+
+export JAVA_HOME="$(cd "$(dirname "$0")/.." && pwd)/.jdk/jdk-17.0.19+10"
+exec "$MAVEN_BIN" "$@"

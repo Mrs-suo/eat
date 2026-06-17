@@ -1,0 +1,134 @@
+/**
+ * Eat Design Tokens
+ * 统一全站色板/间距/圆角/阴影/字号 — 所有页面应使用 var(--xxx) 而非硬编码
+ *
+ * 阶段一（round 5 落地）：橙色品牌色 + 常用灰阶 + spacing/radius/shadow/font 标尺
+ * 阶段二（round 6 落地）：spacing/font scale + 组件库迁移
+ * 阶段三（round 7 落地）：my/login/menu/today 等页面硬编码色迁移
+ * 阶段四（round 13 落地）：补齐 36 个 my/login/menu/today/publish 引用的 token
+ *   - 12 个 color: bg-overlay-star/bg-page-soft/primary-lighter/text-muted/text-quaternary
+ *   - 13 个 gradient: info/success/danger/primary-strong/primary-fade-star 等
+ *   - 6 个 shadow: card/card-soft/card-strong/color-soft/info-soft/success-soft
+ *
+ * 渐变取色原则：与 --gradient-primary 同一组 lightness/saturation
+ *   info    = 蓝调 (#3b82f6 -> #5b9bff)
+ *   success = 绿调 (#36a854 -> #5cc97f)
+ *   danger  = 红调 (#f44336 -> #ff6b5a)
+ *   primary-strong = 主橘加深刻 (#ff5f36 -> #ff6b35)
+ */
+
+:root {
+  /* Brand */
+  --color-primary: #ff6b35;
+  --color-primary-deep: #ff5f36;
+  --color-primary-light: #ff8a5b;
+  --color-primary-lighter: #ffb591;
+  --color-primary-soft: #fff1ea;
+  --color-primary-bg: #fff7f1;
+  --color-primary-faint: #fff0e6;
+
+  /* Gradients */
+  --gradient-primary: linear-gradient(135deg, #ff6b35 0%, #ff8a5b 100%);
+  --gradient-primary-soft: linear-gradient(135deg, #ff8a5b 0%, #ff6b35 100%);
+  --gradient-primary-strong: linear-gradient(135deg, #ff5f36 0%, #ff6b35 100%);
+  --gradient-primary-fade: linear-gradient(135deg, #fff1ea 0%, #ffd9c4 100%);
+  --gradient-primary-fade-soft: linear-gradient(135deg, #fff7f1 0%, #ffe4d1 100%);
+  --gradient-primary-fade-vertical-soft: linear-gradient(180deg, #fff1ea 0%, #fff1ea00 100%);
+  --gradient-primary-rainbow: conic-gradient(#ff6b35, #ff5f36, #ff8a5b, #ffb591, #ff6b35);
+  --gradient-info: linear-gradient(135deg, #3b82f6 0%, #5b9bff 100%);
+  --gradient-success: linear-gradient(135deg, #36a854 0%, #5cc97f 100%);
+  --gradient-danger: linear-gradient(135deg, #f44336 0%, #ff6b5a 100%);
+  --gradient-danger-soft: linear-gradient(135deg, #ffebee 0%, #ffd2d4 100%);
+  --gradient-blob-1: linear-gradient(135deg, #ffd9c4 0%, #ffb591 100%);
+  --gradient-blob-2: linear-gradient(135deg, #fff1ea 0%, #ffd9c4 100%);
+  --gradient-blob-soft-1: radial-gradient(circle at 30% 30%, #ff8a5b66 0%, #ff8a5b00 70%);
+  --gradient-blob-soft-2: radial-gradient(circle at 70% 70%, #ff6b354d 0%, #ff6b3500 70%);
+  --gradient-bg-soft: linear-gradient(135deg, #fff7f1 0%, #fff1ea 100%);
+  --gradient-divider-fade: linear-gradient(180deg, #eef2f5 0%, #eef2f500 100%);
+  --gradient-avatar: linear-gradient(135deg, #d4a373 0%, #b08968 100%);
+  --gradient-page: linear-gradient(180deg, #fff7f1 0%, #ffffff 50%);
+
+  /* Neutral text */
+  --color-text-primary: #2a3344;
+  --color-text-secondary: #5d6673;
+  --color-text-muted: #5d6878;
+  --color-text-tertiary: #8a95a3;
+  --color-text-quaternary: #b0b8c2;
+  --color-text-placeholder: #c2c8d0;
+
+  /* Bg */
+  --color-bg-page: #f8f8f8;
+  --color-bg-page-soft: #f5f6f8;
+  --color-bg-card: #ffffff;
+  --color-bg-hover: #f3f5f8;
+  --color-bg-dark: #1e2633;
+
+  /* Overlay (frosted glass / modal) */
+  --color-bg-overlay-light: rgba(255, 255, 255, 0.4);
+  --color-bg-overlay-soft: rgba(255, 255, 255, 0.6);
+  --color-bg-overlay-medium: rgba(255, 255, 255, 0.75);
+  --color-bg-overlay-strong: rgba(255, 255, 255, 0.92);
+
+  /* Modal mask (publish popup) */
+  --color-mask-light: rgba(0, 0, 0, 0.2);
+  --color-mask-medium: rgba(0, 0, 0, 0.4);
+  --color-mask-strong: rgba(0, 0, 0, 0.6);
+
+  --color-border-light: #f0f2f5;
+  --color-border-default: #eef2f5;
+  --color-border-strong: rgba(18, 26, 38, 0.04);
+
+  /* Semantic */
+  --color-success: #36a854;
+  --color-success-soft: #e7f8ec;
+  --color-warning: #ff9500;
+  --color-warning-soft: #fff3e0;
+  --color-danger: #f44336;
+  --color-danger-soft: #ffebee;
+  --color-info: #3b82f6;
+  --color-info-soft: #e3f2fd;
+
+  /* Radius */
+  --radius-sm: 12rpx;
+  --radius-md: 16rpx;
+  --radius-lg: 20rpx;
+  --radius-xl: 22rpx;
+  --radius-pill: 999rpx;
+
+  /* Shadow */
+  --shadow-sm: 0 4rpx 14rpx rgba(31, 42, 55, 0.06);
+  --shadow-md: 0 10rpx 26rpx rgba(20, 30, 40, 0.07);
+  --shadow-lg: 0 12rpx 28rpx rgba(31, 42, 55, 0.1);
+  --shadow-card: 0 8rpx 22rpx rgba(20, 30, 40, 0.06);
+  --shadow-card-soft: 0 4rpx 14rpx rgba(20, 30, 40, 0.05);
+  --shadow-card-strong: 0 12rpx 30rpx rgba(22, 30, 42, 0.08);
+  --shadow-primary: 0 12rpx 28rpx rgba(255, 107, 53, 0.4);
+  --shadow-primary-soft: 0 8rpx 18rpx rgba(255, 107, 53, 0.22);
+  --shadow-primary-strong: 0 14rpx 32rpx rgba(255, 107, 53, 0.32);
+  --shadow-color-soft: 0 4rpx 12rpx rgba(20, 30, 40, 0.08);
+  --shadow-info-soft: 0 6rpx 16rpx rgba(59, 130, 246, 0.2);
+  --shadow-success-soft: 0 6rpx 16rpx rgba(54, 168, 84, 0.2);
+
+  /* Spacing */
+  --space-1: 4rpx;
+  --space-2: 8rpx;
+  --space-3: 12rpx;
+  --space-4: 16rpx;
+  --space-5: 20rpx;
+  --space-6: 24rpx;
+  --space-8: 32rpx;
+  --space-10: 40rpx;
+  --space-12: 48rpx;
+  --space-16: 64rpx;
+
+  /* Font */
+  --font-xs: 20rpx;
+  --font-sm: 22rpx;
+  --font-base: 24rpx;
+  --font-md: 26rpx;
+  --font-lg: 28rpx;
+  --font-xl: 32rpx;
+  --font-2xl: 36rpx;
+  --font-3xl: 40rpx;
+  --font-4xl: 48rpx;
+}

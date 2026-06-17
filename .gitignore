@@ -1,0 +1,34 @@
+# IDE
+.idea/
+.vscode/
+
+# Local tools / agents
+.claude/
+.jdk/
+.tmp/
+.workbuddy/
+
+# Backend
+backend/target/
+backend/.mvn/
+backend/apache-maven-*/
+backend/file-storage/
+backend/logs/
+backend/*.log
+backend/maven.zip
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/unpackage/
+frontend/logs/
+frontend/.tmp-*
+frontend/.workbuddy/
+
+# Local artifacts
+--full-page
+tempscr*.png
+
+# OS
+.DS_Store
+Thumbs.db

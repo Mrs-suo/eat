@@ -1,0 +1,95 @@
+{
+  "pages": [
+    {
+      "path": "pages/menu/menu",
+      "style": {
+        "navigationBarTitleText": "菜单"
+      }
+    },
+    {
+      "path": "pages/today/today",
+      "style": {
+        "navigationBarTitleText": "今日"
+      }
+    },
+    {
+      "path": "pages/my/my",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "disableScroll": true
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/publish/publish",
+      "style": {
+        "navigationBarTitleText": "发布菜品"
+      }
+    },
+    {
+      "path": "pages/order/order",
+      "style": {
+        "navigationBarTitleText": "我的订单"
+      }
+    },
+    {
+      "path": "pages/edit-request/edit-request",
+      "style": {
+        "navigationBarTitleText": "申请修改菜品"
+      }
+    },
+    {
+      "path": "pages/approve/approve",
+      "style": {
+        "navigationBarTitleText": "审核申请"
+      }
+    },
+    {
+      "path": "pages/dish-detail/dish-detail",
+      "style": {
+        "navigationBarTitleText": "菜品详情",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "美食点餐",
+    "navigationBarBackgroundColor": "#ffffff",
+    "backgroundColor": "#f8f8f8",
+    "navigationStyle": "custom"
+  },
+  "tabBar": {
+    "height": "0px",
+    "color": "#999999",
+    "selectedColor": "#ff6b35",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/menu/menu",
+        "text": "Menu",
+        "iconPath": "static/menu.png",
+        "selectedIconPath": "static/menu-active.png"
+      },
+      {
+        "pagePath": "pages/today/today",
+        "text": "Today",
+        "iconPath": "static/today.png",
+        "selectedIconPath": "static/today-active.png"
+      },
+      {
+        "pagePath": "pages/my/my",
+        "text": "My",
+        "iconPath": "static/my.png",
+        "selectedIconPath": "static/my-active.png"
+      }
+    ]
+  }
+}
