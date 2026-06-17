@@ -8,6 +8,26 @@
           <view class="bg-blob bg-blob-3"></view>
         </view>
 
+        <view v-if="isLoggedIn" class="my-toolbar">
+          <view class="toolbar-title-group">
+            <text class="toolbar-title">个人中心</text>
+            <text class="toolbar-subtitle">账号、家庭和审核消息</text>
+          </view>
+          <view class="toolbar-actions">
+            <view class="toolbar-action reserved"></view>
+            <view class="toolbar-action reserved"></view>
+            <view
+              class="toolbar-action notify-bell"
+              hover-class="toolbar-action--hover"
+              :hover-stay-time="80"
+              @click="goToNotifications"
+            >
+              <AppIcon name="bell" size="md" tone="inherit" />
+              <text v-if="pendingCount > 0" class="notify-badge">{{ pendingCount }}</text>
+            </view>
+          </view>
+        </view>
+
         <view
           v-if="isLoggedIn"
           class="my-profile"
@@ -184,10 +204,10 @@
           </view>
           <view class="menu-row-text">
             <text class="row-title">审核申请</text>
-            <text class="row-desc">{{ isMeCook ? '今天是你做饭，处理菜品修改' : '今天不是你做饭，暂无审核权限' }}</text>
+            <text class="row-desc">{{ pendingCount > 0 ? '有需要你处理的家庭消息' : '查看菜品修改和家庭加入申请' }}</text>
           </view>
           <view class="row-right">
-            <text v-if="isMeCook && pendingCount > 0" class="badge">{{ pendingCount }}</text>
+            <text v-if="pendingCount > 0" class="badge">{{ pendingCount }}</text>
             <AppIcon name="chevron_right" size="md" tone="muted" class="row-chevron" />
           </view>
         </view>
@@ -235,7 +255,11 @@ import {
   getPendingRequests,
   getFamilyDishes,
   getOrdersByFamily,
-  getReceivedFamilyInvitations
+  getReceivedFamilyInvitations,
+  getUserFamilies,
+  getFamilyInvitations,
+  getNotifications,
+  WS_NOTIFICATION_URL
 } from '@/utils/api.js'
 import { formatYMD } from '@/utils/date.js'
 import { info, error, warn } from '@/utils/toast.js'
@@ -258,9 +282,13 @@ export default {
       members: [],
       todayCook: null,
       pendingCount: 0,
+      dishPendingCount: 0,
+      joinPendingCount: 0,
       receivedInviteCount: 0,
       weeklyStats: { cookDays: 0, dishCount: 0, orderCount: 0 },
-      todayDateStr: ''
+      todayDateStr: '',
+      notificationSocket: null,
+      socketUserId: ''
     }
   },
   computed: {
@@ -284,6 +312,12 @@ export default {
   onShow() {
     this.loadSession()
   },
+  onHide() {
+    this.closeNotificationSocket()
+  },
+  onUnload() {
+    this.closeNotificationSocket()
+  },
   methods: {
     loadSession() {
       const user = uni.getStorageSync('currentUser')
@@ -293,10 +327,12 @@ export default {
       const today = new Date()
       this.todayDateStr = `${today.getMonth() + 1}月${today.getDate()}日`
       if (!this.user) {
+        this.closeNotificationSocket()
         this.resetFamilyState()
         this.pageLoading = false
         return
       }
+      this.connectNotificationSocket()
       this.loadAll()
     },
     async loadAll() {
@@ -324,6 +360,8 @@ export default {
       this.members = []
       this.todayCook = null
       this.pendingCount = 0
+      this.dishPendingCount = 0
+      this.joinPendingCount = 0
       this.weeklyStats = { cookDays: 0, dishCount: 0, orderCount: 0 }
       uni.removeStorageSync('familyId')
       uni.removeStorageSync('familyCode')
@@ -376,15 +414,35 @@ export default {
     },
     async loadPending() {
       try {
-        if (!this.family) {
-          this.pendingCount = 0
-          return
-        }
-        const list = await getPendingRequests(this.family.id)
-        this.pendingCount = list.length
+        const list = await getNotifications(this.currentUserId)
+        const notifications = Array.isArray(list) ? list : []
+        this.dishPendingCount = notifications.filter(item => item.auditType === 'dish').length
+        this.joinPendingCount = notifications.filter(item => item.auditType === 'familyJoin').length
+        this.pendingCount = this.dishPendingCount + this.joinPendingCount
       } catch (e) {
-        this.pendingCount = 0
+        const [dishList, joinList] = await Promise.all([
+          this.family ? getPendingRequests(this.family.id).catch(() => []) : Promise.resolve([]),
+          this.loadJoinPendingList()
+        ])
+        this.dishPendingCount = Array.isArray(dishList) ? dishList.length : 0
+        this.joinPendingCount = Array.isArray(joinList) ? joinList.length : 0
+        this.pendingCount = this.dishPendingCount + this.joinPendingCount
       }
+    },
+    async loadJoinPendingList() {
+      if (!this.currentUserId) return []
+      const families = await getUserFamilies(this.currentUserId).catch(() => [])
+      if (!Array.isArray(families) || !families.length) return []
+      const groups = await Promise.all(
+        families.map(family =>
+          getFamilyInvitations(family.id, this.currentUserId)
+            .then(list => (Array.isArray(list) ? list : []))
+            .catch(() => [])
+        )
+      )
+      return groups
+        .flat()
+        .filter(item => item.status === 'PENDING' && item.requestType === 'JOIN_REQUEST')
     },
     async loadReceivedInvites() {
       try {
@@ -456,6 +514,7 @@ export default {
       return `${value.slice(0, 3)}****${value.slice(7)}`
     },
     logout() {
+      this.closeNotificationSocket()
       uni.removeStorageSync('currentUser')
       uni.removeStorageSync('userId')
       uni.removeStorageSync('phone')
@@ -470,14 +529,44 @@ export default {
       info('已退出')
     },
     goToOrder() { uni.navigateTo({ url: '/pages/order/order' }) },
+    goToNotifications() {
+      uni.navigateTo({ url: '/pages/notifications/notifications' })
+    },
     goToApprove() {
-      if (!this.isMeCook) {
-        warn('今天不是你做饭')
-        return
-      }
       uni.navigateTo({ url: '/pages/approve/approve' })
     },
-    goToMyDishes() { uni.navigateTo({ url: '/pages/order/order?tab=mine' }) }
+    goToMyDishes() { uni.navigateTo({ url: '/pages/order/order?tab=mine' }) },
+    connectNotificationSocket() {
+      if (!this.currentUserId || typeof WebSocket === 'undefined') return
+      if (this.notificationSocket && this.socketUserId === this.currentUserId) return
+      this.closeNotificationSocket()
+      try {
+        const socket = new WebSocket(`${WS_NOTIFICATION_URL}?userId=${encodeURIComponent(this.currentUserId)}`)
+        socket.onmessage = () => {
+          this.loadPending()
+        }
+        socket.onclose = () => {
+          if (this.notificationSocket === socket) {
+            this.notificationSocket = null
+            this.socketUserId = ''
+          }
+        }
+        this.notificationSocket = socket
+        this.socketUserId = this.currentUserId
+      } catch (e) {
+        this.notificationSocket = null
+        this.socketUserId = ''
+      }
+    },
+    closeNotificationSocket() {
+      if (this.notificationSocket) {
+        try {
+          this.notificationSocket.close()
+        } catch (e) {}
+      }
+      this.notificationSocket = null
+      this.socketUserId = ''
+    }
   }
 }
 </script>
@@ -523,6 +612,101 @@ export default {
 @keyframes floatBlob {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50% { transform: translate(10rpx, -15rpx) scale(1.08); }
+}
+
+.my-toolbar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 88rpx;
+  padding: 4rpx 4rpx 0;
+}
+
+.toolbar-title-group {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.toolbar-title,
+.toolbar-subtitle {
+  display: block;
+}
+
+.toolbar-title {
+  color: var(--color-text-primary);
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.toolbar-subtitle {
+  color: var(--color-text-tertiary);
+  font-size: 22rpx;
+  font-weight: 600;
+}
+
+.toolbar-actions {
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, 72rpx);
+  gap: 12rpx;
+  justify-content: end;
+}
+
+.toolbar-action {
+  position: relative;
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.toolbar-action.reserved {
+  visibility: hidden;
+}
+
+.notify-bell {
+  color: var(--color-primary);
+  background: var(--color-bg-card);
+  box-shadow: 0 14rpx 32rpx rgba(255, 91, 46, 0.22);
+  border: 1rpx solid rgba(255, 107, 53, 0.12);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.toolbar-action--hover,
+.notify-bell:active {
+  transform: scale(0.94);
+  box-shadow: 0 8rpx 22rpx rgba(255, 45, 85, 0.22);
+}
+
+.notify-badge {
+  position: absolute;
+  top: -10rpx;
+  right: -10rpx;
+  min-width: 34rpx;
+  height: 34rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  color: #fff;
+  background: #ff2d55;
+  font-size: 20rpx;
+  font-weight: 900;
+  line-height: 34rpx;
+  text-align: center;
+  border: 4rpx solid #fff;
+  box-shadow: 0 8rpx 18rpx rgba(255, 45, 85, 0.34);
+  animation: badgePulse 1.8s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
 }
 
 /* ============ 已登录 Profile 卡片 ============ */
@@ -956,13 +1140,14 @@ export default {
 
 .badge {
   margin-right: 12rpx;
-  padding: 4rpx 12rpx;
+  padding: 5rpx 14rpx;
   border-radius: 999rpx;
-  color: var(--color-bg-card);
-  background: var(--gradient-danger-soft);
-  font-size: 20rpx; font-weight: 700;
-  box-shadow: var(--shadow-primary-soft);
-  min-width: 32rpx; text-align: center;
+  color: #fff;
+  background: #ff2d55;
+  font-size: 20rpx; font-weight: 900;
+  box-shadow: 0 8rpx 18rpx rgba(255, 45, 85, 0.28);
+  border: 3rpx solid #fff;
+  min-width: 34rpx; text-align: center;
 }
 
 .footer-brand {

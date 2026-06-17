@@ -15,6 +15,7 @@ public class DishEditRequestService {
 
     private final DishEditRequestRepository requestRepository;
     private final DishRepository dishRepository;
+    private final NotificationPushService notificationPushService;
 
     public List<DishEditRequest> getPendingByFamily(Long familyId) {
         if (familyId == null) return List.of();
@@ -36,7 +37,9 @@ public class DishEditRequestService {
         }
         request.setStatus(0);
         request.setCreateTime(LocalDateTime.now());
-        return requestRepository.save(request);
+        DishEditRequest saved = requestRepository.save(request);
+        notificationPushService.refreshFamily(saved.getFamilyId());
+        return saved;
     }
 
     public DishEditRequest approveRequest(Long requestId) {
@@ -73,7 +76,10 @@ public class DishEditRequestService {
             dishRepository.save(newDish);
         }
 
-        return requestRepository.save(request);
+        DishEditRequest saved = requestRepository.save(request);
+        notificationPushService.refreshFamily(saved.getFamilyId());
+        notificationPushService.refreshUser(saved.getUserId());
+        return saved;
     }
 
     public DishEditRequest rejectRequest(Long requestId, String reason) {
@@ -83,7 +89,10 @@ public class DishEditRequestService {
         request.setStatus(2);
         request.setRejectReason(reason);
         request.setUpdateTime(LocalDateTime.now());
-        return requestRepository.save(request);
+        DishEditRequest saved = requestRepository.save(request);
+        notificationPushService.refreshFamily(saved.getFamilyId());
+        notificationPushService.refreshUser(saved.getUserId());
+        return saved;
     }
 
     public void deleteRequest(Long id) {

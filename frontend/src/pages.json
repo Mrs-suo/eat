@@ -65,6 +65,13 @@
       }
     },
     {
+      "path": "pages/notifications/notifications",
+      "style": {
+        "navigationBarTitleText": "消息提醒",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/dish-detail/dish-detail",
       "style": {
         "navigationBarTitleText": "菜品详情",

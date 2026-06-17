@@ -40,6 +40,7 @@ public class FamilyService {
     private final AppUserRepository appUserRepository;
     private final DailyCookRepository dailyCookRepository;
     private final FamilyInvitationRepository familyInvitationRepository;
+    private final NotificationPushService notificationPushService;
 
     public AppUser getUser(String userId) {
         if (userId == null || userId.trim().isEmpty()) {
@@ -184,7 +185,9 @@ public class FamilyService {
         invitation.setRequestType(TYPE_INVITE);
         invitation.setCreateTime(LocalDateTime.now());
         invitation.setUpdateTime(LocalDateTime.now());
-        return familyInvitationRepository.save(invitation);
+        FamilyInvitation saved = familyInvitationRepository.save(invitation);
+        notificationPushService.refreshUser(invitee.getUserId());
+        return saved;
     }
 
     @Transactional
@@ -245,7 +248,9 @@ public class FamilyService {
         invitation.setRequestType(TYPE_JOIN_REQUEST);
         invitation.setCreateTime(LocalDateTime.now());
         invitation.setUpdateTime(LocalDateTime.now());
-        return familyInvitationRepository.save(invitation);
+        FamilyInvitation saved = familyInvitationRepository.save(invitation);
+        notifyFamilyCreator(family);
+        return saved;
     }
 
     public List<Map<String, Object>> getFamilyInvitations(Long familyId, String operatorUserId) {
@@ -291,6 +296,7 @@ public class FamilyService {
         invitation.setStatus(INVITE_ACCEPTED);
         invitation.setUpdateTime(LocalDateTime.now());
         familyInvitationRepository.save(invitation);
+        notificationPushService.refreshFamily(invitation.getFamilyId());
         return getFamily(invitation.getFamilyId());
     }
 
@@ -310,6 +316,8 @@ public class FamilyService {
         invitation.setStatus(INVITE_REJECTED);
         invitation.setUpdateTime(LocalDateTime.now());
         familyInvitationRepository.save(invitation);
+        notificationPushService.refreshUser(invitation.getInviterUserId());
+        notificationPushService.refreshUser(invitation.getInviteeUserId());
     }
 
     @Transactional
@@ -337,6 +345,8 @@ public class FamilyService {
         invitation.setStatus(INVITE_ACCEPTED);
         invitation.setUpdateTime(LocalDateTime.now());
         familyInvitationRepository.save(invitation);
+        notificationPushService.refreshFamily(invitation.getFamilyId());
+        notificationPushService.refreshUser(invitation.getInviteeUserId());
         return getFamily(invitation.getFamilyId());
     }
 
@@ -354,6 +364,8 @@ public class FamilyService {
         invitation.setStatus(INVITE_REJECTED);
         invitation.setUpdateTime(LocalDateTime.now());
         familyInvitationRepository.save(invitation);
+        notificationPushService.refreshFamily(invitation.getFamilyId());
+        notificationPushService.refreshUser(invitation.getInviteeUserId());
     }
 
     @Transactional
@@ -451,6 +463,18 @@ public class FamilyService {
         if (creatorUserId == null || !creatorUserId.equals(userId)) {
             throw new IllegalArgumentException("只有家庭创建人可以审核申请");
         }
+    }
+
+    private void notifyFamilyCreator(Family family) {
+        if (family == null) {
+            return;
+        }
+        String creatorUserId = family.getCreatorUserId();
+        if (creatorUserId == null || creatorUserId.isBlank()) {
+            List<FamilyMember> members = familyMemberRepository.findByFamilyId(family.getId());
+            creatorUserId = members.isEmpty() ? null : members.get(0).getUserId();
+        }
+        notificationPushService.refreshUser(creatorUserId);
     }
 
     private String normalizePhone(String phone) {

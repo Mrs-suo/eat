@@ -1,5 +1,6 @@
 const BASE_URL = '/api'
 const FILE_SERVICE_ORIGIN = 'http://localhost:8080'
+export const WS_NOTIFICATION_URL = 'ws://localhost:8080/ws/notifications'
 
 export const isFileServiceUrl = (url) => {
   return typeof url === 'string' && url.startsWith(`${FILE_SERVICE_ORIGIN}/files/`)
@@ -207,6 +208,12 @@ export const rejectRequest = (id, reason) => request({
   url: `/edit-requests/${id}/reject?reason=${encodeURIComponent(reason)}`,
   method: 'PUT'
 })
+
+// ============ 通知 ============
+export const getNotifications = (userId) => {
+  if (!userId) return Promise.resolve([])
+  return request({ url: `/notifications?userId=${encodeURIComponent(userId)}` })
+}
 
 // ============ 订单 ============
 export const getOrdersByUserId = (userId) => request({ url: `/orders/user/${userId}` })
