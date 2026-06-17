@@ -223,6 +223,8 @@
 
 **特点**：渐变 header（橘色），返回按钮用 `/static/back.png` 资源
 
+**定位**：**项目里"被 push 进来的子页"的标准 header 方案**（发布菜品 / 审核申请等）。tab 页用 `AppShell`、图片沉浸页用 `TopBar variant="transparent"` 是例外。详见 [§3.6](#36-二级页-header-模式决策树) 决策树。
+
 ### 2.2 内容展示
 
 #### `HeroPanel` — 大色块 hero
@@ -330,6 +332,12 @@
 - `gradient`：`--gradient-primary`
 
 **回退逻辑**：栈 > 1 → `navigateBack`；fallbackUrl 是 tab → `switchTab`；否则 `reLaunch`
+
+**使用边界**：TopBar **不是**普通子页 header 的默认选择。只有以下场景才用：
+- **图片沉浸页**（菜品详情 `dish-detail`）→ `variant="transparent"` 浮在大图上
+- **特殊视觉需要**（自定义纯色顶 + 内容流式滚动）→ `variant="solid"`
+
+普通"被 push 进来的子页"（表单页、列表页、审核页）**必须用 `PageLayout`** —— 与 `publish` 保持一致，避免每个页面 header 风格不同。详见 [§3.6](#36-二级页-header-模式决策树)。
 
 #### `Divider` — 分割线
 
@@ -529,6 +537,111 @@ animation: floatBlob 8s ease-in-out infinite;
 }
 ```
 
+### 3.6 二级页 header 模式决策树
+
+> **核心规则**：项目里有 **2 个合法的二级页 header 方案**，按场景二选一，**不要**随手写第三种。
+
+#### 决策表
+
+| 页面类型 | 推荐方案 | 变体 | 原因 |
+|---|---|---|---|
+| 普通子页（表单/列表/审批） | `<PageLayout title="…" @back>` | 默认渐变 header | 与 `publish` 等其他子页保持统一 |
+| 图片沉浸页（详情大图） | `<TopBar variant="transparent" :fixed="true">` | transparent | 顶栏要"消失"在图片里 |
+| 纯白流式页面（需要滚动时顶栏固定） | `<TopBar variant="solid" :fixed="true">` | solid | 例外，不推荐自创 |
+| tab 页 | `<AppShell>` 的 `#menu` 槽 | 不用单独 header | 由 `AppShell` 渲染底部 tabBar + 内容区 |
+
+#### 推荐写法（普通子页）
+
+```vue
+<template>
+  <PageLayout title="审核申请">
+    <template #header-right>
+      <!-- 顶栏右侧自定义区（chip / 计数 / 按钮），宽 64rpx -->
+      <view v-if="totalPendingCount > 0" class="header-chip">
+        <text>待审核 {{ totalPendingCount }}</text>
+      </view>
+    </template>
+
+    <!-- page-content 自带 overflow-y:auto，无需自管滚动 -->
+    <view class="page-body">
+      <EmptyState v-if="!list.length" />
+      <ListCard v-for="item in list" :key="item.id" :layout="'row-image'">
+        ...
+      </ListCard>
+    </view>
+  </PageLayout>
+</template>
+
+<style scoped>
+.page-body { padding: 8rpx 24rpx 40rpx; }
+
+/* header-right 内的白色 chip（与橘色渐变背景区分） */
+.header-chip {
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 600;
+  line-height: 26rpx;
+}
+</style>
+```
+
+#### 反例（不要这么做）
+
+```vue
+<!-- ❌ 错误：每个子页自己写个 TopBar 风格 header -->
+<view class="container">
+  <TopBar title="审核申请" variant="solid" :fixed="false" />
+  <view class="summary">...</view>
+  ...
+</view>
+
+<!-- ❌ 错误：PageLayout 不写 title 也不传 showBack 隐藏 -->
+<PageLayout>
+  <view class="custom-header">...</view>
+  ...
+</PageLayout>
+```
+
+#### PageLayout 的关键能力
+
+- **自动回退**：`@back` 不传时，栈 > 1 → `navigateBack({delta:1})`；栈底 → `switchTab('/pages/menu/menu')`；失败 → `reLaunch` 兜底
+- **整页 flex 布局**：外层 `height: 100vh; display: flex; flex-direction: column`；`page-content` 是 `flex: 1; overflow-y: auto` —— 子页**不需要**自己写 `min-height: 100vh` 也不用管滚动
+- **header 视觉**：背景 `linear-gradient(135deg, #ff6b35, #ff8c5a)`（与品牌主色一致）；返回箭头用 `static/back.png` 64×64rpx
+- **插槽**：`#header-right`（64rpx 宽，右对齐）和 `#default`（主内容）
+
+#### TopBar 的合法使用场景
+
+只用于**确实需要脱离渐变 header 视觉**的页面：
+
+- **菜品详情** `pages/dish-detail/dish-detail.vue`：大图上要"无 header 感"，用 `variant="transparent" :fixed="true"`
+- **未来扩展**：自定义纯色页面（白底流式 + 滚动时顶栏固定）
+
+#### 现状（截至 2026-06-17）
+
+| 页面 | 方案 | 状态 |
+|---|---|---|
+| `pages/publish/publish.vue` | `PageLayout` | ✅ 标准 |
+| `pages/approve/approve.vue` | `PageLayout` | ✅ 2026-06-17 改 |
+| `pages/notifications/notifications.vue` | `PageLayout` | ✅ 2026-06-17 改 |
+| `pages/dish-detail/dish-detail.vue` | `TopBar transparent` | ✅ 合法例外 |
+| tab 页（menu/today/my） | `AppShell` | ✅ 不用单独 header |
+| `pages/edit-request/`, `pages/family/`, `pages/profile/`, `pages/login/`, `pages/order/` | 无 header | ⚠️ 后续若加，按本决策树选 |
+
+#### `header-right` slot 不放任何内容
+
+`PageLayout` 的 `#header-right` 槽位是给"返回箭头右侧的操作区"预留的（如未来的"编辑"/"保存"/"+"按钮），**不要塞文本 chip 或 stat 数字**。
+
+**反例**（2026-06-17 已纠正）：`pages/approve/approve.vue` 之前塞了"家庭名 + 待审核 N"两个白色 chip，mobile 420px 宽度下文本被竖排压成"待/审/核/1"。
+
+**正例**：
+
+- 信息密度需求 → 放进 `page-content` 顶部的次级 header（如 ListCard 标题），不在 header 区域
+- 数量统计 → 放进第一个列表项的"标题"或右侧"操作按钮"里
+- 操作按钮（编辑/保存/分享）→ 才用 `header-right`，且要符合 64rpx 高度 + 24rpx 内边距 + 22rpx 字号的紧凑规范
+
 ---
 
 ## 4 · 配色用法地图
@@ -568,6 +681,7 @@ animation: floatBlob 8s ease-in-out infinite;
 | A11y | **完全无**（无 `aria-` / `role` / `alt` / `tabindex`） | 加基础 aria 标签 |
 | 国际化 | 全中文硬编码 | i18n 抽离（暂无需求） |
 | `aria-` 屏幕阅读器 | 0 处 | 至少 image 加 `alt`，按钮加 `aria-label` |
+| 二级页 header 风格 | ~~publish 用 PageLayout，dish-detail 用 TopBar，approve 早期用 TopBar 各自为政~~ → **2026-06-17 已统一**：见 [§3.6](#36-二级页-header-模式决策树) | ✅ |
 
 ---
 

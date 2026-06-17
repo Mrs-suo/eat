@@ -133,6 +133,7 @@
             :class="{ me: m.userId === currentUserId, cook: m.userId === todayCookUserId }"
           >
             <MemberAvatar
+              :src="m.avatar"
               :text="(m.nickname || m.phone).charAt(0)"
               size="sm"
               :badge="m.userId === todayCookUserId ? '厨' : ''"

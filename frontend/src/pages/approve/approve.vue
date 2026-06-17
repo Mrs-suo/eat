@@ -1,24 +1,18 @@
 <template>
-  <view class="container">
-    <HeroPanel
-      title="家庭审核"
-      :subtitle="(familyName || '我的小家') + ' · 待审核 ' + totalPendingCount + ' 条'"
-      tone="orange"
-      fullwidth
-    />
+  <PageLayout title="审核申请">
+    <view class="approve-page">
+      <view v-if="loading" class="loading">
+        <text>加载中...</text>
+      </view>
 
-    <view v-if="loading" class="loading">
-      <text>加载中...</text>
-    </view>
+      <EmptyState
+        v-else-if="totalPendingCount === 0"
+        emoji="🎉"
+        title="没有待审核申请"
+        hint="家庭暂时没有需要你处理的事项"
+      />
 
-    <EmptyState
-      v-else-if="totalPendingCount === 0"
-      emoji="🎉"
-      title="没有待审核申请"
-      hint="家庭暂时没有需要你处理的事项"
-    />
-
-    <view v-else class="request-list">
+      <view v-else class="request-list">
       <view v-if="joinRequests.length" class="audit-section">
         <text class="audit-section-title">家庭加入申请</text>
         <ListCard
@@ -124,11 +118,12 @@
       </ListCard>
       </view>
     </view>
-  </view>
+    </view>
+  </PageLayout>
 </template>
 
 <script>
-import HeroPanel from '@/components/HeroPanel.vue'
+import PageLayout from '@/components/PageLayout.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ListCard from '@/components/ListCard.vue'
 import Tag from '@/components/Tag.vue'
@@ -148,7 +143,7 @@ import { success, error, info } from '@/utils/toast.js'
 const AVATAR_EMOJIS = ['🐱', '🐶', '🐰', '🦊', '🐼', '🐨', '🐯', '🐸', '🦁', '🐵', '🐔', '🦄']
 
 export default {
-  components: { HeroPanel, EmptyState, ListCard, Tag },
+  components: { PageLayout, EmptyState, ListCard, Tag },
   data() {
     return {
       pendingList: [],
@@ -305,9 +300,9 @@ export default {
 </script>
 
 <style scoped>
-.container {
-  min-height: 100vh;
-  background: var(--color-bg-page);
+.approve-page {
+  min-height: 100%;
+  padding: 8rpx 24rpx 40rpx;
 }
 
 .request-list {

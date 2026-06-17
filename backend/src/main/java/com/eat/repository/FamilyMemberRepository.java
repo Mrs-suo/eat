@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FamilyMemberRepository extends JpaRepository<FamilyMember, Long> {
     List<FamilyMember> findByFamilyId(Long familyId);
+    List<FamilyMember> findByFamilyIdOrderByJoinedAtAsc(Long familyId);
     List<FamilyMember> findByUserId(String userId);
     Optional<FamilyMember> findByFamilyIdAndUserId(Long familyId, String userId);
     long countByFamilyId(Long familyId);

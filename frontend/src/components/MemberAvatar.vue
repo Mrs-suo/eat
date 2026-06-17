@@ -2,7 +2,14 @@
   <view class="member-avatar-wrap" :class="['size-' + size, { 'has-ring': ring }]">
     <view v-if="ring" class="member-avatar-ring"></view>
     <view class="member-avatar-inner" :style="innerStyle">
-      <text v-if="text" class="member-avatar-text">{{ text }}</text>
+      <image
+        v-if="src"
+        class="member-avatar-image"
+        :src="src"
+        mode="aspectFill"
+        @error="onImageError"
+      />
+      <text v-else-if="text" class="member-avatar-text">{{ text }}</text>
       <text v-else-if="emoji" class="member-avatar-emoji">{{ emoji }}</text>
     </view>
     <view v-if="badge" class="member-avatar-badge" :class="'badge-' + badgeTone">
@@ -22,20 +29,37 @@ export default {
   props: {
     text: { type: String, default: '' },
     emoji: { type: String, default: '' },
+    src: { type: String, default: '' },
     size: { type: String, default: 'md' }, // sm | md | lg | xl
     ring: { type: Boolean, default: false },
     badge: { type: String, default: '' },
     badgeTone: { type: String, default: 'primary' }, // primary | success | warning
     color: { type: String, default: '' }
   },
+  data() {
+    return { imageFailed: false }
+  },
   computed: {
+    effectiveSrc() {
+      if (this.imageFailed) return ''
+      return this.src || ''
+    },
     innerStyle() {
+      if (this.effectiveSrc) return {}
       if (this.color) return { background: this.color }
       if (this.text) {
         const idx = this.text.charCodeAt(0) % COLOR_PALETTE.length
         return { background: COLOR_PALETTE[idx] }
       }
       return {}
+    }
+  },
+  watch: {
+    src() { this.imageFailed = false }
+  },
+  methods: {
+    onImageError() {
+      this.imageFailed = true
     }
   }
 }
@@ -70,6 +94,13 @@ export default {
 .member-avatar-emoji {
   font-size: 1em;
   line-height: 1;
+}
+
+.member-avatar-image {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: block;
 }
 
 /* sizes — wrap + inner must both be sized to avoid collapse in flex */

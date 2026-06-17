@@ -1,19 +1,5 @@
 <template>
-  <view class="notify-page">
-    <HeroPanel
-      title="消息提醒"
-      :subtitle="notifications.length ? `当前有 ${notifications.length} 条待处理消息` : '暂时没有需要处理的消息'"
-      tone="orange"
-      fullwidth
-    >
-      <template #badge>
-        <view class="hero-bell">
-          <AppIcon name="bell" size="lg" tone="inherit" />
-          <text v-if="notifications.length" class="hero-count">{{ notifications.length }}</text>
-        </view>
-      </template>
-    </HeroPanel>
-
+  <PageLayout title="消息提醒">
     <view v-if="loading" class="loading-card">
       <text>加载消息中...</text>
     </view>
@@ -48,19 +34,19 @@
         <AppIcon name="chevron_right" size="md" tone="muted" />
       </view>
     </view>
-  </view>
+  </PageLayout>
 </template>
 
 <script>
 import AppIcon from '@/components/AppIcon.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import HeroPanel from '@/components/HeroPanel.vue'
+import PageLayout from '@/components/PageLayout.vue'
 import { getNotifications } from '@/utils/api.js'
 import { formatShortDateTime } from '@/utils/date.js'
 import { error } from '@/utils/toast.js'
 
 export default {
-  components: { AppIcon, EmptyState, HeroPanel },
+  components: { AppIcon, EmptyState, PageLayout },
   data() {
     return {
       loading: false,
@@ -103,41 +89,6 @@ export default {
 </script>
 
 <style scoped>
-.notify-page {
-  min-height: 100vh;
-  background: var(--color-bg-page);
-}
-
-.hero-bell {
-  position: relative;
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 24rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-bg-card);
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.hero-count {
-  position: absolute;
-  top: -10rpx;
-  right: -10rpx;
-  min-width: 34rpx;
-  height: 34rpx;
-  padding: 0 8rpx;
-  border-radius: 999rpx;
-  background: #ff2d55;
-  color: #fff;
-  font-size: 20rpx;
-  font-weight: 900;
-  line-height: 34rpx;
-  text-align: center;
-  border: 4rpx solid #fff;
-  box-shadow: 0 8rpx 20rpx rgba(255, 45, 85, 0.35);
-}
-
 .loading-card {
   margin: 24rpx;
   padding: 36rpx;

@@ -111,11 +111,38 @@ public class FamilyService {
         return familyRepository.findByFamilyCode(code.toUpperCase()).orElse(null);
     }
 
+    /**
+     * 家庭成员返回顺序：
+     *   1. 家庭创建人（主理人，管理员字段占位）
+     *   2. 其他成员按 joinedAt 升序（先加入者排前）
+     * 注：当前 schema 没有独立的"管理员"字段，creatorUserId 同时承担主理人/管理员角色；
+     *     后续若加 admin 字段，插在 [0] 之后、其他人之前即可。
+     */
     public List<AppUser> getFamilyMembers(Long familyId) {
-        List<FamilyMember> members = familyMemberRepository.findByFamilyId(familyId);
+        Family family = familyRepository.findById(familyId).orElse(null);
+        String creatorUserId = family == null ? null : family.getCreatorUserId();
+
+        // 历史家庭可能没有 creator_user_id（schema 加字段前创建的），
+        // 用最早加入者回填，确保提升首位逻辑能命中。
+        if (creatorUserId == null || creatorUserId.isBlank()) {
+            List<FamilyMember> earliest = familyMemberRepository.findByFamilyIdOrderByJoinedAtAsc(familyId);
+            creatorUserId = earliest.isEmpty() ? null : earliest.get(0).getUserId();
+        }
+
+        List<FamilyMember> members = familyMemberRepository.findByFamilyIdOrderByJoinedAtAsc(familyId);
         List<AppUser> users = new ArrayList<>();
+        AppUser creator = null;
         for (FamilyMember m : members) {
-            appUserRepository.findByUserId(m.getUserId()).ifPresent(users::add);
+            AppUser u = appUserRepository.findByUserId(m.getUserId()).orElse(null);
+            if (u == null) continue;
+            if (creatorUserId != null && m.getUserId().equals(creatorUserId)) {
+                creator = u;
+            } else {
+                users.add(u);
+            }
+        }
+        if (creator != null) {
+            users.add(0, creator);
         }
         return users;
     }
