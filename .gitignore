@@ -30,6 +30,12 @@ frontend/.workbuddy/
 --full-page
 tempscr*.png
 
-# OS
+# IDE / OS
+.idea/
+.vscode/
 .DS_Store
 Thumbs.db
+
+# Local env overrides (do not commit personal passwords)
+backend/src/main/resources/application-local.yml
+!backend/src/main/resources/application-local.yml.example
